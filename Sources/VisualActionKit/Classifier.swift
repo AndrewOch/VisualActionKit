@@ -24,37 +24,46 @@ public extension Classifier {
         case resizingFailure
     }
     
-    func classify(_ asset: AVAsset, then completion: (Predictions) -> Void) throws {
-        
-        let reader = try AVAssetReader(asset: asset)
+    func classify(_ asset: AVAsset, then completion: (Predictions) -> Void) {
+        let reader = try! AVAssetReader(asset: asset)
         let videoTrack = asset.tracks(withMediaType: .video)[0]
         
-        let trackReaderOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings:[String(kCVPixelBufferPixelFormatTypeKey): NSNumber(value: kCVPixelFormatType_32BGRA)])
+        let trackReaderOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: [String(kCVPixelBufferPixelFormatTypeKey): NSNumber(value: kCVPixelFormatType_32BGRA)])
+        
         let frameCount = asset.frameCount()
-        
-        guard 25...300 ~= frameCount else {
-            throw ProcessingError.unsupportedFrameCount
-        }
-        
+        let segmentSize = 300  // Define max frames per segment
+        var totalPredictions: Predictions = []
+
         reader.add(trackReaderOutput)
         reader.startReading()
-        
-        /// 5D tensor containing RGB data for each pixel in each sequential frame of the video.
-        var multi = MultiArray<Float32>(shape: [1, frameCount, frameSize, frameSize, 3])
-        
-        var currentFrame = 0
-        while let sampleBuffer = trackReaderOutput.copyNextSampleBuffer() {
+
+        // Calculate number of segments
+        let numberOfSegments = Int(ceil(Double(frameCount) / Double(segmentSize)))
+
+        for segment in 0..<numberOfSegments {
+            let segmentFrameCount = min(segmentSize, frameCount - segment * segmentSize)
+            var multi = MultiArray<Float32>(shape: [1, segmentFrameCount, frameSize, frameSize, 3])
             
-            guard var imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { continue }
-            imageBuffer = try resizeIfNecessary(buffer: imageBuffer)
+            var currentFrame = 0
+            while currentFrame < segmentFrameCount {
+                guard let sampleBuffer = trackReaderOutput.copyNextSampleBuffer() else { break }
+                
+                guard var imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { continue }
+                imageBuffer = try! resizeIfNecessary(buffer: imageBuffer)
+                
+                extractRgbValuesInCenterCrop(from: imageBuffer, to: &multi, for: currentFrame)
+                currentFrame += 1
+            }
             
-            extractRgbValuesInCenterCrop(from: imageBuffer, to: &multi, for: currentFrame)
-            currentFrame += 1
+            if let segmentPredictions = try? performInference(for: multi) {
+                totalPredictions.append(contentsOf: segmentPredictions)
+            }
         }
         
-        completion(try performInference(for: multi))
+        completion(totalPredictions)
     }
 }
+
 
 @available(macOS 11.0, *)
 private extension Classifier {
