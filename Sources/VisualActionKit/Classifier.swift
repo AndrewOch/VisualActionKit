@@ -2,19 +2,21 @@ import Foundation
 import AVKit
 import CoreML
 
+@available(macOS 11.0, *)
 public class Classifier {
     public static let shared = Classifier()
     let frameSize = 224
-    let model: Kinetics
+    let model: Actions
     
     private init() {
-        let modelUrl = Bundle.module.url(forResource: "Kinetics", withExtension: "mlmodel")!
+        let modelUrl = Bundle.module.url(forResource: "ActionsML", withExtension: "mlmodel")!
         let compiledModelURL = try! MLModel.compileModel(at: modelUrl)
         let mlModel = try! MLModel(contentsOf: compiledModelURL)
-        model = Kinetics(model: mlModel)
+        model = Actions(model: mlModel)
     }
 }
 
+@available(macOS 11.0, *)
 public extension Classifier {
     
     typealias Predictions = [(classLabel: String, probability: Double)]
@@ -57,6 +59,7 @@ public extension Classifier {
     }
 }
 
+@available(macOS 11.0, *)
 private extension Classifier {
     
     /// Resize a frame preserving its aspect ratio such that the smallest dimension is 256 pixels.
@@ -80,7 +83,7 @@ private extension Classifier {
     }
     
     func performInference(for tensor: MultiArray<Float32>) throws -> Predictions {
-        let input = KineticsInput(Placeholder: tensor.array)
+        let input = ActionsInput(Placeholder: tensor.array)
         let output = try model.prediction(input: input)
         return top(5, output.Softmax)
     }
