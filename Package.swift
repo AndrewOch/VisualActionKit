@@ -20,7 +20,7 @@ let package = Package(
             name: "VisualActionKit",
             dependencies: [],
             resources: [
-                .process("ActionsML.mlmodel")
+                .process("Kinetics.mlmodel")
             ]),
         .testTarget(
             name: "VisualActionKitTests",

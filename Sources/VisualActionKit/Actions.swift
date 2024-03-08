@@ -56,7 +56,7 @@ class Actions {
     let model: MLModel
     class var urlOfModelInThisBundle : URL {
         let bundle = Bundle(for: self)
-        return bundle.url(forResource: "ActionsML", withExtension:"mlmodelc")!
+        return bundle.url(forResource: "Kinetics", withExtension:"mlmodelc")!
     }
     init(model: MLModel) {
         self.model = model
