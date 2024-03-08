@@ -9,10 +9,7 @@ public class Classifier {
     let model: Actions
     
     private init() {
-        let modelUrl = Bundle.module.url(forResource: "Kinetics", withExtension: "mlmodel")!
-        let compiledModelURL = try! MLModel.compileModel(at: modelUrl)
-        let mlModel = try! MLModel(contentsOf: compiledModelURL)
-        model = Actions(model: mlModel)
+        model = try! Actions(model: Kinetics().model)
     }
 }
 
